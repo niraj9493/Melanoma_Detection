@@ -9,4 +9,7 @@
     <LocalDebuggerEnvironment>PATH=$(OPENCV_DIR)\x64\vc15\bin;$(OPENCV_DIR)\x64\vc15\bin;$(OPENCV_DIR)\include;%PATH%
 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
   </PropertyGroup>
+  <PropertyGroup>
+    <ShowAllFiles>true</ShowAllFiles>
+  </PropertyGroup>
 </Project>
