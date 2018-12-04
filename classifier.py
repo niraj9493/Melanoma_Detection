@@ -58,7 +58,7 @@ def Segment(image):
     return mask
 
 def feature_extract(img, mask):
-    #hog = cv.HOGDescriptor()
+    hog = cv.HOGDescriptor()
     mask = cv.morphologyEx(mask,cv.MORPH_OPEN,kernel=cv.getStructuringElement(cv.MORPH_RECT,(4,4)))
     mask = cv.medianBlur(mask,7)
     mask = cv.medianBlur(mask,5)
@@ -66,10 +66,7 @@ def feature_extract(img, mask):
     mask,conts,_ = cv.findContours(mask,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
     mask = img * mask[:,:,None].astype(img.dtype)
     mask = cv.drawContours(mask, conts, -1, (0,255,0), 3)
-    fd, hog_image = hog(mask, orientations=8, pixels_per_cell=(16, 16), cells_per_block=(1, 1), visualise=True)
-    cv.imshow('name',hog_image)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    #fd, hog_image = hog(mask, orientations=8, pixels_per_cell=(16, 16), cells_per_block=(1, 1), visualise=True)
     return hog.compute(mask)
 
 
