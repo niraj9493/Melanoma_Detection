@@ -1,2 +1,7 @@
 ﻿  Melanoma_Detection.cpp
+c:\users\travis\source\repos\melanoma_detection\melanoma_detection\melanoma_detection.cpp(358): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\travis\source\repos\melanoma_detection\melanoma_detection\melanoma_detection.cpp(427): warning C4101: 'accuracy_RBF_load_auto': unreferenced local variable
+c:\users\travis\source\repos\melanoma_detection\melanoma_detection\melanoma_detection.cpp(426): warning C4101: 'accuracy_RBF_load': unreferenced local variable
+c:\users\travis\source\repos\melanoma_detection\melanoma_detection\melanoma_detection.cpp(425): warning C4101: 'accuracy_RBF_auto': unreferenced local variable
+c:\users\travis\source\repos\melanoma_detection\melanoma_detection\melanoma_detection.cpp(424): warning C4101: 'accuracy_RBF': unreferenced local variable
   Melanoma_Detection.vcxproj -> C:\Users\Travis\source\repos\Melanoma_Detection\x64\Debug\Melanoma_Detection.exe
