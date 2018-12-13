@@ -45,6 +45,15 @@ import sys
 from skimage.feature import hog
 
 # =====================================================================
+def preprocess(image):
+    clahe = cv.createCLAHE(3.0, (8,8))
+    color_channels = [];
+    image = cv.cvtColor(image, cv.COLOR_BGR2YCrCb)
+    color_channels = cv.split(image)
+    color_channels[0] =  clahe.apply(color_channels[0])
+    image = cv.merge(color_channels)
+    return cv.cvtColor(image, cv.COLOR_YCrCb2BGR)
+
 def Segment(image):
     ch = [ i for i in cv.split(image)]
 
@@ -58,7 +67,7 @@ def Segment(image):
     return mask
 
 def feature_extract(img, mask):
-    hog = cv.HOGDescriptor()
+    hog = cv.HOGDescriptor((600,480), (16,16), (8,8), (8,8), 9, 4, 0.2, 1, 64)
     mask = cv.morphologyEx(mask,cv.MORPH_OPEN,kernel=cv.getStructuringElement(cv.MORPH_RECT,(4,4)))
     mask = cv.medianBlur(mask,7)
     mask = cv.medianBlur(mask,5)
@@ -66,7 +75,7 @@ def feature_extract(img, mask):
     mask,conts,_ = cv.findContours(mask,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
     mask = img * mask[:,:,None].astype(img.dtype)
     mask = cv.drawContours(mask, conts, -1, (0,255,0), 3)
-    #fd, hog_image = hog(mask, orientations=8, pixels_per_cell=(16, 16), cells_per_block=(1, 1), visualise=True)
+    #fd, hog_image = hog(mask, orientations=9, pixels_per_cell=(16, 16), cells_per_block=(1, 1), visualise=True)
     return hog.compute(mask)
 
 
@@ -87,8 +96,8 @@ def get_features_and_labels():
     y = []
     p_size = 0
     n_size = 0
-    dir_p = r"C:/Users/Niraj93/source/repos/Melanoma_Detection/Melanoma_Detection/data/data/data_positive/"
-    dir_n = r"C:/Users/Niraj93/source/repos/Melanoma_Detection/Melanoma_Detection/data/data/data_negative/"
+    dir_p = r"G:/Melanoma Detection/data/data_positive/"
+    dir_n = r"G:/Melanoma Detection/data/data_negative/"
     for f in os.listdir(dir_p):
        if f.endswith('.jpg'):
            #files.append(dir_p+f)
@@ -96,7 +105,6 @@ def get_features_and_labels():
            img = cv.resize(img,(640,480))
            if img is None:
                 raise Exception("No Image Loaded !")
-           #X.append(np.array(feature_extract(img,Segment(img))))
            X.append(feature_extract(img,Segment(img)))
            #y.append(np.array(1))
            y.append(1)
@@ -121,6 +129,7 @@ def get_features_and_labels():
     
     # Use 80% of the data for training; test against the rest
     from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import LabelEncoder
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     # sklearn.pipeline.make_pipeline could also be used to chain 
@@ -143,18 +152,32 @@ def get_features_and_labels():
     
     # Fit the scaler based on the training data, then apply the same
     # scaling to both training and test sets.
-    #nsamples, nx, ny = X_train.shape
-    #d2_train_dataset = X_train.reshape((nsamples,nx*ny))  
+    X_train = np.array(X_train)
+    nsamples, nx, ny = X_train.shape
+    X_train = X_train.reshape((nsamples,nx*ny))
+
+    X_test = np.array(X_test)
+    nsamples, nx, ny = X_test.shape
+    X_test = X_test.reshape((nsamples,nx*ny))
+    
     scaler.fit(X_train)
     X_train = scaler.transform(X_train)
     X_test = scaler.transform(X_test)
 
+    enc = LabelEncoder()
+    y_train = enc.fit_transform(y_train)
+    y_test = enc.fit_transform(y_test)
+    
     # Return the training and test sets
     return X_train, X_test, y_train, y_test
 
 
 # =====================================================================
 
+def classify(image, svm):
+    image = cv.resize(image,(640,480))
+    image = feature_extract(image,Segment(image))
+    return svm.predict(image)
 
 def evaluate_classifier(X_train, X_test, y_train, y_test):
     '''
@@ -172,14 +195,18 @@ def evaluate_classifier(X_train, X_test, y_train, y_test):
 
     # We will calculate the P-R curve for each classifier
     from sklearn.metrics import precision_recall_curve, f1_score
-    
+    from joblib import dump
     # Here we create classifiers with default parameters. These need
     # to be adjusted to obtain optimal performance on your data set.
     
     # Test the linear support vector classifier
     classifier = LinearSVC(C=1)
     # Fit the classifier
-    #classifier.fit(X_train, y_train)
+    classifier.fit(X_train, y_train)
+    
+    # Save the classifier
+    dump(classifier, 'LinearSVC.xml')
+    
     score = f1_score(y_test, classifier.predict(X_test))
     # Generate the P-R curve
     y_prob = classifier.decision_function(X_test)
@@ -190,7 +217,11 @@ def evaluate_classifier(X_train, X_test, y_train, y_test):
     # Test the Nu support vector classifier
     classifier = NuSVC(kernel='rbf', nu=0.5, gamma=1e-3)
     # Fit the classifier
-    #classifier.fit(X_train, y_train)
+    classifier.fit(X_train, y_train)
+
+    # Save the classifier
+    dump(classifier, 'NuSVC.xml')
+    
     score = f1_score(y_test, classifier.predict(X_test))
     # Generate the P-R curve
     y_prob = classifier.decision_function(X_test)
@@ -202,6 +233,10 @@ def evaluate_classifier(X_train, X_test, y_train, y_test):
     classifier = AdaBoostClassifier(n_estimators=50, learning_rate=1.0, algorithm='SAMME.R')
     # Fit the classifier
     classifier.fit(X_train, y_train)
+    
+    # Save the classifier
+    dump(classifier, 'AdaBoostSVC.xml')
+    
     score = f1_score(y_test, classifier.predict(X_test))
     # Generate the P-R curve
     y_prob = classifier.decision_function(X_test)
@@ -305,7 +340,7 @@ if __name__ == '__main__':
     #cv.destroyAllWindows()
 
 
-    
+    #THIS SECTION CAN BE REMOVED ONCE SVMS ARE TRAINED============
     # Process data into feature and label arrays
     X_train, X_test, y_train, y_test = get_features_and_labels()
 
@@ -316,3 +351,26 @@ if __name__ == '__main__':
     # Display the results
     print("Plotting the results")
     plot(results)
+    #END REMOVED SECTION=========================================
+
+    #Rahul, this is where the loading and classification is done
+    #Classify is really straight forward and just needs an image and will provide a float as result
+    #not sure how the GUI will give the image but you can just pass that to classify
+    #you can have the classify function called on button press, but you'll need to
+    #find a way to keep the SVM's loaded.
+    
+    from joblin import load
+    linear_svc =  load('LinearSVC.xml')
+    nu_svc = load('NuSVC.xml')
+    ada_boost =  load('AdaBoostSVC.xml')
+
+    print("The Linear classification is: ")
+    print(classify(cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000013.jpg"), linear_svc))
+
+    print("The NuSVC classification is: ")
+    print(classify(cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000013.jpg"), nu_svc))
+
+    print("The AdaBoost classification is: ")
+    print(classify(cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000013.jpg"), ada_boost))
+    
+
