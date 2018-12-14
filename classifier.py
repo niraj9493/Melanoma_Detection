@@ -67,7 +67,7 @@ def Segment(image):
     return mask
 
 def feature_extract(img, mask):
-    hog = cv.HOGDescriptor((600,480), (16,16), (8,8), (8,8), 9, 4, 0.2, 1, 64)
+    hog = cv.HOGDescriptor((640,480), (16,16), (8,8), (8,8), 9, 4, 0.2, 1, 64)
     mask = cv.morphologyEx(mask,cv.MORPH_OPEN,kernel=cv.getStructuringElement(cv.MORPH_RECT,(4,4)))
     mask = cv.medianBlur(mask,7)
     mask = cv.medianBlur(mask,5)
@@ -105,6 +105,7 @@ def get_features_and_labels():
            img = cv.resize(img,(640,480))
            if img is None:
                 raise Exception("No Image Loaded !")
+           img = preprocess(img)
            X.append(feature_extract(img,Segment(img)))
            #y.append(np.array(1))
            y.append(1)
@@ -118,6 +119,7 @@ def get_features_and_labels():
            img = cv.resize(img,(640,480))
            if img is None:
                 raise Exception("No Image Loaded !")
+           img = preprocess(img)
            X.append(feature_extract(img,Segment(img)))
            y.append(-1)
            #TrainingSamples.append(feature_extract(img,Segment(img)))
@@ -176,8 +178,20 @@ def get_features_and_labels():
 
 def classify(image, svm):
     image = cv.resize(image,(640,480))
-    image = feature_extract(image,Segment(image))
-    return svm.predict(image)
+    image = preprocess(image)
+    hog = feature_extract(image,Segment(image))
+
+    hog = np.array(hog)
+    nx, ny = hog.shape
+    hog = hog.reshape(nx*ny)
+    #image = image.transpose()
+    from sklearn.preprocessing import StandardScaler
+    scaler = StandardScaler()
+
+    scaler.fit([hog])
+    hog = scaler.transform([hog])
+    
+    return svm.predict(hog)
 
 def evaluate_classifier(X_train, X_test, y_train, y_test):
     '''
@@ -206,7 +220,8 @@ def evaluate_classifier(X_train, X_test, y_train, y_test):
     
     # Save the classifier
     dump(classifier, 'LinearSVC.xml')
-    
+    print("Linear Testing Predictions")
+    print(classifier.predict(X_test))
     score = f1_score(y_test, classifier.predict(X_test))
     # Generate the P-R curve
     y_prob = classifier.decision_function(X_test)
@@ -221,7 +236,8 @@ def evaluate_classifier(X_train, X_test, y_train, y_test):
 
     # Save the classifier
     dump(classifier, 'NuSVC.xml')
-    
+    print("Nu Testing Predictions")
+    print(classifier.predict(X_test))
     score = f1_score(y_test, classifier.predict(X_test))
     # Generate the P-R curve
     y_prob = classifier.decision_function(X_test)
@@ -236,7 +252,8 @@ def evaluate_classifier(X_train, X_test, y_train, y_test):
     
     # Save the classifier
     dump(classifier, 'AdaBoostSVC.xml')
-    
+    print("Ada Testing Predictions")
+    print(classifier.predict(X_test))
     score = f1_score(y_test, classifier.predict(X_test))
     # Generate the P-R curve
     y_prob = classifier.decision_function(X_test)
@@ -342,7 +359,7 @@ if __name__ == '__main__':
 
     #THIS SECTION CAN BE REMOVED ONCE SVMS ARE TRAINED============
     # Process data into feature and label arrays
-    X_train, X_test, y_train, y_test = get_features_and_labels()
+    """X_train, X_test, y_train, y_test = get_features_and_labels()
 
     # Evaluate multiple classifiers on the data
     print("Evaluating classifiers")
@@ -350,7 +367,7 @@ if __name__ == '__main__':
 
     # Display the results
     print("Plotting the results")
-    plot(results)
+    plot(results)"""
     #END REMOVED SECTION=========================================
 
     #Rahul, this is where the loading and classification is done
@@ -359,18 +376,23 @@ if __name__ == '__main__':
     #you can have the classify function called on button press, but you'll need to
     #find a way to keep the SVM's loaded.
     
-    from joblin import load
+    from joblib import load
     linear_svc =  load('LinearSVC.xml')
     nu_svc = load('NuSVC.xml')
     ada_boost =  load('AdaBoostSVC.xml')
 
+    img = cv.imread("G:/Melanoma Detection/data/data_negative/ISIC_0000005.jpg")
+    if img is None:
+        raise Exception("No Image Loaded !")
+        print("No Image Loaded");
+    
     print("The Linear classification is: ")
-    print(classify(cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000013.jpg"), linear_svc))
+    print(classify(img, linear_svc))
 
     print("The NuSVC classification is: ")
-    print(classify(cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000013.jpg"), nu_svc))
+    print(classify(img, nu_svc))
 
     print("The AdaBoost classification is: ")
-    print(classify(cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000013.jpg"), ada_boost))
+    print(classify(img, ada_boost))
     
 
