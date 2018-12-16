@@ -147,6 +147,7 @@ def get_features_and_labels():
     
     # Normalize the attribute values to mean=0 and variance=1
     from sklearn.preprocessing import StandardScaler
+    from joblib import dump
     scaler = StandardScaler()
     # To scale to a specified range, use MinMaxScaler
     #from sklearn.preprocessing import MinMaxScaler
@@ -163,6 +164,7 @@ def get_features_and_labels():
     X_test = X_test.reshape((nsamples,nx*ny))
     
     scaler.fit(X_train)
+    dump(scaler, 'Scaler.xml')
     X_train = scaler.transform(X_train)
     X_test = scaler.transform(X_test)
 
@@ -184,13 +186,10 @@ def classify(image, svm):
     hog = np.array(hog)
     nx, ny = hog.shape
     hog = hog.reshape(nx*ny)
-    #image = image.transpose()
     from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-
-    scaler.fit([hog])
+    from joblib import load
+    scaler = load('Scaler.xml')
     hog = scaler.transform([hog])
-    
     return svm.predict(hog)
 
 def evaluate_classifier(X_train, X_test, y_train, y_test):
@@ -381,7 +380,7 @@ if __name__ == '__main__':
     nu_svc = load('NuSVC.xml')
     ada_boost =  load('AdaBoostSVC.xml')
 
-    img = cv.imread("G:/Melanoma Detection/data/data_negative/ISIC_0000005.jpg")
+    img = cv.imread("G:/Melanoma Detection/data/data_positive/ISIC_0000144.jpg")
     if img is None:
         raise Exception("No Image Loaded !")
         print("No Image Loaded");
